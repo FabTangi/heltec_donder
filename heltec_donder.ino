@@ -1,5 +1,7 @@
 #include "LoRaWan_APP.h"
 #include "Arduino.h"
+#include "DHT.h"
+#include <DHT_U.h>
 #include "configuration.h"
 
 ///////////////////////////////////////////////////
@@ -7,6 +9,9 @@
 TimerEvent_t sleepTimer;
 //Records whether our sleep/low power timer expired
 bool sleepTimerExpired;
+DHT_Unified dht(DHTPIN, DHTTYPE);
+
+sensor_t sensor;
 
 static void wakeUp()
 {
@@ -40,13 +45,68 @@ static void prepareTxFrame( uint8_t port )
   digitalWrite(Vext, LOW); //Vext On
   pinMode(trigPin, OUTPUT); // Sets the trigPin as an Output
   pinMode(echoPin, INPUT); // Sets the echoPin as an Input
+  dht.begin();
 
   float duration;
   float distance=0;
   float distanceu=0;
   uint8_t i=0;
   uint16_t distancemm=0;
-   
+  uint16_t temperature=0;
+  uint16_t humidity=0;
+  uint32_t delayMS;
+
+   sensor_t sensor;
+  dht.temperature().getSensor(&sensor);
+  Serial.println(F("------------------------------------"));
+  Serial.println(F("Temperature Sensor"));
+  Serial.print  (F("Sensor Type: ")); Serial.println(sensor.name);
+  Serial.print  (F("Driver Ver:  ")); Serial.println(sensor.version);
+  Serial.print  (F("Unique ID:   ")); Serial.println(sensor.sensor_id);
+  Serial.print  (F("Max Value:   ")); Serial.print(sensor.max_value); Serial.println(F("°C"));
+  Serial.print  (F("Min Value:   ")); Serial.print(sensor.min_value); Serial.println(F("°C"));
+  Serial.print  (F("Resolution:  ")); Serial.print(sensor.resolution); Serial.println(F("°C"));
+  Serial.println(F("------------------------------------"));
+  // Print humidity sensor details.
+  dht.humidity().getSensor(&sensor);
+  Serial.println(F("Humidity Sensor"));
+  Serial.print  (F("Sensor Type: ")); Serial.println(sensor.name);
+  Serial.print  (F("Driver Ver:  ")); Serial.println(sensor.version);
+  Serial.print  (F("Unique ID:   ")); Serial.println(sensor.sensor_id);
+  Serial.print  (F("Max Value:   ")); Serial.print(sensor.max_value); Serial.println(F("%"));
+  Serial.print  (F("Min Value:   ")); Serial.print(sensor.min_value); Serial.println(F("%"));
+  Serial.print  (F("Resolution:  ")); Serial.print(sensor.resolution); Serial.println(F("%"));
+  Serial.println(F("------------------------------------"));
+ // Set delay between sensor readings based on sensor details.
+  delayMS = sensor.min_delay / 1000;
+  // Delay between measurements.
+  delay(delayMS);
+ // Get temperature event and print its value.
+  sensors_event_t event;
+  dht.temperature().getEvent(&event);
+  if (isnan(event.temperature)) {
+    Serial.println(F("Error reading temperature!"));
+  }
+  else {
+    Serial.print(F("Temperature: "));
+    temperature = int(event.temperature *100);
+    Serial.print(temperature/100);
+    Serial.println(F("°C"));
+  }
+  // Get humidity event and print its value.
+  dht.humidity().getEvent(&event);
+  if (isnan(event.relative_humidity)) {
+    Serial.println(F("Error reading humidity!"));
+  }
+  else {
+    Serial.print(F("Humidity: "));
+   humidity = int(event.relative_humidity *100);
+    Serial.print(humidity/100);
+    Serial.println(F("%"));
+  }
+
+  
+
   delay(5000);//wait for sensor JSN-SR04T
   
   //Read 5 times to get the average value
@@ -65,7 +125,7 @@ static void prepareTxFrame( uint8_t port )
   distanceu= duration*0.034/2;  
   // Prints the distance on the Serial Monitor
   Serial.print("Distance: ");  
-  Serial.print(distanceu);
+  Serial.println(distanceu);
   distance+=distanceu;
   delay(100);
   i++;    
@@ -76,17 +136,28 @@ static void prepareTxFrame( uint8_t port )
   digitalWrite(Vext, HIGH); //Vext Off
   
   uint16_t batteryVoltage = getBatteryVoltage();
+
+
   
-  appDataSize = 4;
+  
+  appDataSize = 8;
   appData[0] = (uint8_t)(batteryVoltage>>8);
   appData[1] = (uint8_t)batteryVoltage;
   appData[2] = (uint8_t)(distancemm>>8);
   appData[3] = (uint8_t)distancemm;
+  appData[4] = (uint8_t)(temperature>>8);
+  appData[5] = (uint8_t)temperature;
+  appData[6] = (uint8_t)(humidity>>8);
+  appData[7] = (uint8_t)humidity;
   
   Serial.print("distance: ");
-  Serial.print(distancemm);  
+  Serial.println(distancemm);  
+  Serial.print("temperature:");
+  Serial.println(temperature); 
+  Serial.print("humidity:");
+  Serial.println(humidity); 
   Serial.print("BatteryVoltage:");
-  Serial.println(batteryVoltage);
+  Serial.println(batteryVoltage); 
 }
 
 
