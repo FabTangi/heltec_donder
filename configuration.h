@@ -31,6 +31,9 @@ return decoded;
 #define trigPin GPIO5
 #define echoPin GPIO6
 
+#define DHTPIN GPIO10     // Digital pin connected to the DHT sensor 
+
+#define DHTTYPE    DHT11     // DHT 11
 
 /* OTAA para*/
 uint8_t devEui[] = { TO BE FILLED };
